@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ task.title }} - Ethara.ai{% endblock %}
+
+{% block content %}
+<div class="task-detail">
+    <div class="page-header">
+        <div>
+            <a href="{{ url_for('tasks.list_tasks') }}" class="back-link">← Back to Tasks</a>
+            <h1>{{ task.title }}</h1>
+        </div>
+        <div class="header-actions">
+            {% if is_member %}
+            <form method="POST" action="{{ url_for('tasks.update_status', task_id=task.id) }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ url_for('tasks.view_task', task_id=task.id) }}">
+                <select name="status" class="status-select" onchange="this.form.submit()">
+                    <option value="pending" {% if task.status == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                    <option value="completed" {% if task.status == 'completed' %}selected{% endif %}>Completed</option>
+                </select>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Task Meta -->
+    <div class="task-meta-grid">
+        <div class="meta-item">
+            <span class="meta-label">Status</span>
+            <span class="status-badge status-{{ task.status }}">{{ task.status_display() }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Priority</span>
+            <span class="priority-badge priority-{{ task.priority or 'medium' }}">
+                {% if task.priority == 'high' %}🔴{% elif task.priority == 'low' %}🟢{% else %}🟡{% endif %}
+                {{ (task.priority or 'medium')|capitalize }}
+            </span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Project</span>
+            <a href="{{ url_for('projects.view_project', project_id=task.project_id) }}">{{ task.project.name }}</a>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Assigned To</span>
+            <span>{{ task.assignee.username if task.assignee else 'Unassigned' }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Due Date</span>
+            <span>
+                {% if task.due_date %}
+                    {{ task.due_date.strftime('%b %d, %Y') }}
+                    {% if task.is_overdue() %}<span class="overdue-tag">OVERDUE</span>{% endif %}
+                {% else %}
+                    Not set
+                {% endif %}
+            </span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Created</span>
+            <span>{{ task.created_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+        </div>
+    </div>
+
+    <!-- Description -->
+    {% if task.description %}
+    <div class="section">
+        <h2>Description</h2>
+        <div class="task-description-box">
+            {{ task.description }}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Comments -->
+    <div class="section">
+        <h2>Comments ({{ task.comments|length }})</h2>
+        
+        {% if task.comments %}
+        <div class="comments-list">
+            {% for comment in task.comments %}
+            <div class="comment-card">
+                <div class="comment-header">
+                    <div class="comment-avatar">{{ comment.author.username[0]|upper }}</div>
+                    <div class="comment-meta">
+                        <strong>{{ comment.author.username }}</strong>
+                        <span class="comment-time">{{ comment.created_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+                    </div>
+                </div>
+                <div class="comment-body">{{ comment.content }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-state" style="padding: 1.5rem;">No comments yet. Start the conversation below.</p>
+        {% endif %}
+
+        <!-- Add Comment Form -->
+        {% if is_member %}
+        <form method="POST" action="{{ url_for('tasks.add_comment', task_id=task.id) }}" class="comment-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <textarea name="content" rows="3" placeholder="Write a comment..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-small">Post Comment</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

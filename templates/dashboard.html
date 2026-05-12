@@ -6,7 +6,7 @@
     <h1>Dashboard</h1>
     <p class="welcome-text">Hey {{ current_user.username }}! Here's your overview.</p>
     
-    <!-- Stats Cards with Icons -->
+    <!-- Stats Cards -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-icon">📋</div>
@@ -42,13 +42,11 @@
     <div class="section progress-section">
         <h2>Overall Progress</h2>
         <div class="progress-container">
-            {% set total_completed = completed %}
-            {% set total_tasks = total %}
-            {% set percent = (total_completed / total_tasks * 100)|int if total_tasks > 0 else 0 %}
+            {% set percent = (completed / total * 100)|int if total > 0 else 0 %}
             <div class="progress-bar-bg">
                 <div class="progress-bar-fill" style="width: {{ percent }}%;"></div>
             </div>
-            <p class="progress-text">{{ percent }}% Work Completed ({{ total_completed }} / {{ total_tasks }} Tasks)</p>
+            <p class="progress-text">{{ percent }}% Work Completed ({{ completed }} / {{ total }} Tasks)</p>
         </div>
     </div>
 
@@ -62,7 +60,11 @@
             {% set proj_done = project.tasks|selectattr('status', 'equalto', 'completed')|list|length %}
             <div class="dist-row">
                 <div class="dist-label">
-                    <span class="dist-name">{{ project.name }}</span>
+                    <span class="dist-name">
+                        {{ project.name }}
+                        {% if project.health_status() == 'overdue' %}<span class="overdue-tag">OVERDUE</span>
+                        {% elif project.health_status() == 'at_risk' %}<span class="at-risk-tag">AT RISK</span>{% endif %}
+                    </span>
                     <span class="dist-count">{{ proj_done }}/{{ proj_total }}</span>
                 </div>
                 <div class="dist-bar-bg">
@@ -83,7 +85,38 @@
     </div>
     {% endif %}
 
-    <!-- Recent Tasks with Priority -->
+    <!-- Recent Activity -->
+    {% if recent_activity %}
+    <div class="section">
+        <h2>Recent Activity</h2>
+        <div class="activity-feed activity-feed-compact">
+            {% for activity in recent_activity %}
+            <div class="activity-item">
+                <div class="activity-icon">
+                    {% if activity.action == 'created' %}➕
+                    {% elif activity.action == 'updated' %}✏️
+                    {% elif activity.action == 'deleted' %}🗑️
+                    {% elif activity.action == 'commented' %}💬
+                    {% elif activity.action == 'added' %}👤
+                    {% elif activity.action == 'removed' %}❌
+                    {% else %}📋{% endif %}
+                </div>
+                <div class="activity-content">
+                    <div class="activity-text">
+                        <strong>{{ activity.user.username }}</strong>
+                        {{ activity.action }} {{ activity.target_type }}
+                        <strong>{{ activity.target_name }}</strong>
+                    </div>
+                    <div class="activity-time">{{ activity.created_at.strftime('%b %d at %I:%M %p') }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <a href="{{ url_for('activity.activity_page') }}" style="font-size: 0.8125rem; color: var(--primary); font-weight: 500;">View all activity →</a>
+    </div>
+    {% endif %}
+
+    <!-- Recent Tasks -->
     <div class="section">
         <h2>Recent Tasks</h2>
         {% if recent_tasks %}
@@ -100,7 +133,9 @@
             <tbody>
                 {% for task in recent_tasks %}
                 <tr class="{% if task.is_overdue() %}row-overdue{% endif %}">
-                    <td>{{ task.title }}</td>
+                    <td>
+                        <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="task-link">{{ task.title }}</a>
+                    </td>
                     <td>{{ task.project.name }}</td>
                     <td>
                         <span class="priority-badge priority-{{ task.priority or 'medium' }}">
@@ -138,9 +173,24 @@
                 <div class="project-card">
                     <h3>{{ project.name }}</h3>
                     <p>{{ project.description[:80] }}{% if project.description|length > 80 %}...{% endif %}</p>
+                    <!-- Progress bar -->
+                    <div class="project-progress">
+                        <div class="dist-bar-bg" style="height: 4px;">
+                            <div class="dist-bar-fill" style="width: {{ project.progress_percent() }}%;"></div>
+                        </div>
+                        <span class="project-progress-text">{{ project.progress_percent() }}% complete</span>
+                    </div>
                     <div class="project-meta">
                         <span>{{ project.tasks|length }} tasks</span>
                         <span>{{ project.members|length }} members</span>
+                        {% if project.deadline %}
+                        <span>
+                            {% set days = project.days_remaining() %}
+                            {% if days < 0 %}{{ (-days) }}d overdue
+                            {% elif days == 0 %}Due today
+                            {% else %}{{ days }}d left{% endif %}
+                        </span>
+                        {% endif %}
                     </div>
                 </div>
             </a>

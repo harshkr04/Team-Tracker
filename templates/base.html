@@ -5,25 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Ethara.ai{% endblock %}</title>
     <meta name="description" content="Smart work management system">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     {% if current_user.is_authenticated %}
     <nav class="navbar">
         <div class="nav-brand">
-            <a href="{{ url_for('dashboard.dashboard') }}">✨ Ethara.ai</a>
+            <a href="{{ url_for('dashboard.dashboard') }}">Ethara.ai</a>
         </div>
         <div class="nav-links">
-            <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('projects.list_projects') }}">Projects</a>
-            <a href="{{ url_for('tasks.list_tasks') }}">Tasks</a>
-            <a href="{{ url_for('team.team_page') }}">Team</a>
+            <a href="{{ url_for('dashboard.dashboard') }}" {% if request.endpoint == 'dashboard.dashboard' %}class="nav-active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('projects.list_projects') }}" {% if 'projects' in request.endpoint %}class="nav-active"{% endif %}>Projects</a>
+            <a href="{{ url_for('tasks.list_tasks') }}" {% if 'tasks' in request.endpoint %}class="nav-active"{% endif %}>Tasks</a>
+            <a href="{{ url_for('team.team_page') }}" {% if 'team' in request.endpoint %}class="nav-active"{% endif %}>Team</a>
+            <a href="{{ url_for('activity.activity_page') }}" {% if 'activity' in request.endpoint %}class="nav-active"{% endif %}>Activity</a>
             <span class="nav-divider"></span>
             <span class="nav-user">
-                {{ current_user.username }} 
+                {{ current_user.username }}
                 <span class="role-badge {% if current_user.is_admin() %}badge-admin{% else %}badge-member{% endif %}">
                     {{ current_user.role|upper }}
                 </span>

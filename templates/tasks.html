@@ -9,6 +9,50 @@
     {% endif %}
 </div>
 
+<!-- Filter Bar -->
+<div class="filter-bar">
+    <form method="GET" action="{{ url_for('tasks.list_tasks') }}" class="filter-form">
+        <div class="filter-group">
+            <input type="text" name="q" value="{{ filters.q }}" placeholder="Search tasks..." class="filter-input">
+        </div>
+        <div class="filter-group">
+            <select name="status" class="filter-select">
+                <option value="">All Status</option>
+                <option value="pending" {% if filters.status == 'pending' %}selected{% endif %}>Pending</option>
+                <option value="in_progress" {% if filters.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                <option value="completed" {% if filters.status == 'completed' %}selected{% endif %}>Completed</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select name="priority" class="filter-select">
+                <option value="">All Priority</option>
+                <option value="high" {% if filters.priority == 'high' %}selected{% endif %}>High</option>
+                <option value="medium" {% if filters.priority == 'medium' %}selected{% endif %}>Medium</option>
+                <option value="low" {% if filters.priority == 'low' %}selected{% endif %}>Low</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select name="project_id" class="filter-select">
+                <option value="">All Projects</option>
+                {% for project in projects %}
+                <option value="{{ project.id }}" {% if filters.project_id == project.id|string %}selected{% endif %}>{{ project.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <select name="sort" class="filter-select">
+                <option value="created" {% if filters.sort == 'created' %}selected{% endif %}>Newest</option>
+                <option value="due_date" {% if filters.sort == 'due_date' %}selected{% endif %}>Due Date</option>
+                <option value="priority" {% if filters.sort == 'priority' %}selected{% endif %}>Priority</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-small">Filter</button>
+        {% if filters.q or filters.status or filters.priority or filters.project_id %}
+        <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-secondary btn-small">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
 {% if tasks %}
 <table class="task-table">
     <thead>
@@ -25,7 +69,14 @@
     <tbody>
         {% for task in tasks %}
         <tr class="{% if task.is_overdue() %}row-overdue{% endif %}">
-            <td><strong>{{ task.title }}</strong></td>
+            <td>
+                <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="task-link">
+                    <strong>{{ task.title }}</strong>
+                </a>
+                {% if task.comments|length > 0 %}
+                <span class="comment-count">💬 {{ task.comments|length }}</span>
+                {% endif %}
+            </td>
             <td>
                 <a href="{{ url_for('projects.view_project', project_id=task.project_id) }}">
                     {{ task.project.name }}
@@ -52,6 +103,7 @@
             <td class="actions-cell">
                 {% if current_user.is_admin() or task.assigned_to == current_user.id %}
                 <form method="POST" action="{{ url_for('tasks.update_status', task_id=task.id) }}" class="inline-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <select name="status" class="status-select" onchange="this.form.submit()">
                         <option value="pending" {% if task.status == 'pending' %}selected{% endif %}>Pending</option>
                         <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>In Progress</option>
@@ -64,10 +116,26 @@
         {% endfor %}
     </tbody>
 </table>
+
+<!-- Pagination -->
+{% if pagination.pages > 1 %}
+<div class="pagination">
+    {% if pagination.has_prev %}
+    <a href="{{ url_for('tasks.list_tasks', page=pagination.prev_num, **filters) }}" class="btn btn-secondary btn-small">← Prev</a>
+    {% endif %}
+    <span class="pagination-info">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    {% if pagination.has_next %}
+    <a href="{{ url_for('tasks.list_tasks', page=pagination.next_num, **filters) }}" class="btn btn-secondary btn-small">Next →</a>
+    {% endif %}
+</div>
+{% endif %}
+
 {% else %}
 <div class="empty-state">
     <p>No tasks found.</p>
-    {% if not current_user.is_admin() %}
+    {% if filters.q or filters.status or filters.priority or filters.project_id %}
+    <p>Try adjusting your filters.</p>
+    {% elif not current_user.is_admin() %}
     <p>Tasks assigned to you will show up here.</p>
     {% endif %}
 </div>

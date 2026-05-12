@@ -1,17 +1,21 @@
 from flask import Flask, redirect, url_for, render_template_string
-from extensions import db, login_manager
+from extensions import db, login_manager, csrf
 import os
 
 def create_app():
     app = Flask(__name__)
     
     # config stuff
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-this')
+    secret = os.environ.get('SECRET_KEY')
+    if not secret and os.environ.get('RAILWAY_ENVIRONMENT'):
+        raise RuntimeError("SECRET_KEY must be set in production")
+    app.config['SECRET_KEY'] = secret or 'dev-secret-key-local-only'
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///teamtracker.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     db.init_app(app)
     login_manager.init_app(app)
+    csrf.init_app(app)
     login_manager.login_view = 'auth.login'
     
     # import models so they get registered
@@ -28,6 +32,7 @@ def create_app():
     from routes.dashboard import dashboard_bp
     from routes.settings import settings_bp
     from routes.team import team_bp
+    from routes.activity import activity_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(projects_bp)
@@ -35,6 +40,7 @@ def create_app():
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(team_bp)
+    app.register_blueprint(activity_bp)
     
     @app.route('/')
     def index():
@@ -77,15 +83,15 @@ ERROR_PAGE = """
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:'Inter',sans-serif; background:#F8FAFC; display:flex;
+        body { font-family:'Inter',sans-serif; background:#F9FAFB; display:flex;
                justify-content:center; align-items:center; min-height:100vh; }
         .error-box { text-align:center; padding:3rem; }
-        .error-code { font-size:6rem; font-weight:800; color:#4F46E5; line-height:1; }
-        .error-msg { font-size:1.5rem; font-weight:700; color:#1E293B; margin:1rem 0 0.5rem; }
-        .error-detail { color:#64748B; margin-bottom:2rem; }
-        .error-btn { display:inline-block; padding:10px 24px; background:#4F46E5; color:white;
-                     text-decoration:none; border-radius:8px; font-weight:600; }
-        .error-btn:hover { background:#4338CA; }
+        .error-code { font-size:5rem; font-weight:700; color:#4338CA; line-height:1; }
+        .error-msg { font-size:1.25rem; font-weight:600; color:#111827; margin:1rem 0 0.5rem; }
+        .error-detail { color:#6B7280; margin-bottom:2rem; font-size:0.9375rem; }
+        .error-btn { display:inline-block; padding:8px 20px; background:#4338CA; color:white;
+                     text-decoration:none; border-radius:6px; font-weight:500; font-size:0.875rem; }
+        .error-btn:hover { background:#3730A3; }
     </style>
 </head>
 <body>
@@ -93,7 +99,7 @@ ERROR_PAGE = """
         <div class="error-code">{{ code }}</div>
         <div class="error-msg">{{ message }}</div>
         <p class="error-detail">{{ detail }}</p>
-        <a href="/" class="error-btn">← Go to Dashboard</a>
+        <a href="/" class="error-btn">Go to Dashboard</a>
     </div>
 </body>
 </html>
@@ -104,6 +110,8 @@ def _auto_migrate(app):
     import sqlite3
     
     db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+    if not db_path or not db_path.endswith('.db'):
+        return  # skip for non-sqlite databases
     if not os.path.isabs(db_path):
         db_path = os.path.join(app.instance_path, db_path)
     
@@ -122,6 +130,10 @@ def _auto_migrate(app):
             print("[AUTO-MIGRATE] Adding 'priority' column to task table...")
             cursor.execute("ALTER TABLE task ADD COLUMN priority VARCHAR(20) DEFAULT 'medium'")
         
+        if 'updated_at' not in task_cols:
+            print("[AUTO-MIGRATE] Adding 'updated_at' column to task table...")
+            cursor.execute("ALTER TABLE task ADD COLUMN updated_at DATETIME")
+        
         # --- User table migrations ---
         cursor.execute("PRAGMA table_info(user)")
         user_cols = [row[1] for row in cursor.fetchall()]
@@ -137,6 +149,18 @@ def _auto_migrate(app):
         if 'notify_tasks' not in user_cols:
             print("[AUTO-MIGRATE] Adding 'notify_tasks' column to user table...")
             cursor.execute("ALTER TABLE user ADD COLUMN notify_tasks BOOLEAN DEFAULT 1")
+        
+        # --- Project table migrations ---
+        cursor.execute("PRAGMA table_info(project)")
+        proj_cols = [row[1] for row in cursor.fetchall()]
+        
+        if 'deadline' not in proj_cols:
+            print("[AUTO-MIGRATE] Adding 'deadline' column to project table...")
+            cursor.execute("ALTER TABLE project ADD COLUMN deadline DATE")
+        
+        if 'status' not in proj_cols:
+            print("[AUTO-MIGRATE] Adding 'status' column to project table...")
+            cursor.execute("ALTER TABLE project ADD COLUMN status VARCHAR(20) DEFAULT 'active'")
         
         # --- Fix old status values ---
         cursor.execute("UPDATE task SET status='pending' WHERE status='todo'")
@@ -168,4 +192,5 @@ def _create_default_admin(app):
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Activity - Ethara.ai{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Activity Log</h1>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+    <form method="GET" action="{{ url_for('activity.activity_page') }}" class="filter-form">
+        <div class="filter-group">
+            <select name="user_id" class="filter-select">
+                <option value="">All Users</option>
+                {% for user in users %}
+                <option value="{{ user.id }}" {% if filters.user_id == user.id|string %}selected{% endif %}>{{ user.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <select name="action" class="filter-select">
+                <option value="">All Actions</option>
+                <option value="created" {% if filters.action == 'created' %}selected{% endif %}>Created</option>
+                <option value="updated" {% if filters.action == 'updated' %}selected{% endif %}>Updated</option>
+                <option value="deleted" {% if filters.action == 'deleted' %}selected{% endif %}>Deleted</option>
+                <option value="commented" {% if filters.action == 'commented' %}selected{% endif %}>Commented</option>
+                <option value="added" {% if filters.action == 'added' %}selected{% endif %}>Added</option>
+                <option value="removed" {% if filters.action == 'removed' %}selected{% endif %}>Removed</option>
+                <option value="archived" {% if filters.action == 'archived' %}selected{% endif %}>Archived</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select name="type" class="filter-select">
+                <option value="">All Types</option>
+                <option value="task" {% if filters.type == 'task' %}selected{% endif %}>Tasks</option>
+                <option value="project" {% if filters.type == 'project' %}selected{% endif %}>Projects</option>
+                <option value="member" {% if filters.type == 'member' %}selected{% endif %}>Members</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-small">Filter</button>
+        {% if filters.user_id or filters.action or filters.type %}
+        <a href="{{ url_for('activity.activity_page') }}" class="btn btn-secondary btn-small">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+{% if activities %}
+<div class="activity-feed">
+    {% for activity in activities %}
+    <div class="activity-item">
+        <div class="activity-icon">
+            {% if activity.action == 'created' %}➕
+            {% elif activity.action == 'updated' %}✏️
+            {% elif activity.action == 'deleted' %}🗑️
+            {% elif activity.action == 'commented' %}💬
+            {% elif activity.action == 'added' %}👤
+            {% elif activity.action == 'removed' %}❌
+            {% elif activity.action == 'archived' %}📦
+            {% elif activity.action == 'restored' %}♻️
+            {% else %}📋{% endif %}
+        </div>
+        <div class="activity-content">
+            <div class="activity-text">
+                <strong>{{ activity.user.username }}</strong>
+                {{ activity.action }}
+                <span class="activity-target-type">{{ activity.target_type }}</span>
+                <strong>{{ activity.target_name }}</strong>
+            </div>
+            {% if activity.details %}
+            <div class="activity-details">{{ activity.details }}</div>
+            {% endif %}
+            <div class="activity-time">{{ activity.created_at.strftime('%b %d, %Y at %I:%M %p') }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if pagination.pages > 1 %}
+<div class="pagination">
+    {% if pagination.has_prev %}
+    <a href="{{ url_for('activity.activity_page', page=pagination.prev_num, **filters) }}" class="btn btn-secondary btn-small">← Prev</a>
+    {% endif %}
+    <span class="pagination-info">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    {% if pagination.has_next %}
+    <a href="{{ url_for('activity.activity_page', page=pagination.next_num, **filters) }}" class="btn btn-secondary btn-small">Next →</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <p>No activity recorded yet.</p>
+    <p>Actions like creating tasks, updating statuses, and adding members will appear here.</p>
+</div>
+{% endif %}
+{% endblock %}

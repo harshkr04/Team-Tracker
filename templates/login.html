@@ -8,6 +8,7 @@
         <p class="auth-subtitle">Smart Work Management System</p>
         
         <form method="POST" action="{{ url_for('auth.login') }}" onsubmit="return validateLogin()">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required placeholder="your@email.com">

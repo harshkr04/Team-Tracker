@@ -21,6 +21,14 @@
             <h3>{{ project.name }}</h3>
             <p>{{ project.description[:100] }}{% if project.description|length > 100 %}...{% endif %}</p>
             
+            <!-- Progress bar -->
+            <div class="project-progress">
+                <div class="dist-bar-bg" style="height: 4px;">
+                    <div class="dist-bar-fill" style="width: {{ project.progress_percent() }}%;"></div>
+                </div>
+                <span class="project-progress-text">{{ project.progress_percent() }}%</span>
+            </div>
+
             <!-- Member avatars -->
             <div class="project-members-row">
                 {% for member in project.members[:4] %}
@@ -32,8 +40,16 @@
             </div>
 
             <div class="project-meta">
-                <span>📋 {{ project.tasks|length }} tasks</span>
-                <span>👥 {{ project.members|length }} members</span>
+                <span>{{ project.tasks|length }} tasks</span>
+                <span>{{ project.members|length }} members</span>
+                {% if project.deadline %}
+                <span>
+                    {% set days = project.days_remaining() %}
+                    {% if days < 0 %}{{ (-days) }}d overdue
+                    {% elif days == 0 %}Due today
+                    {% else %}{{ days }}d left{% endif %}
+                </span>
+                {% endif %}
             </div>
         </div>
     </a>
@@ -45,6 +61,31 @@
     {% if current_user.is_admin() %}
     <p>Click "Create Project" to get started!</p>
     {% endif %}
+</div>
+{% endif %}
+
+<!-- Archived Projects -->
+{% if archived_projects %}
+<div class="section" style="margin-top: 2.5rem;">
+    <h2>Archived Projects</h2>
+    <div class="project-cards">
+        {% for project in archived_projects %}
+        <div class="project-card project-card-readonly">
+            <h3>{{ project.name }}</h3>
+            <p>{{ project.description[:80] }}{% if project.description|length > 80 %}...{% endif %}</p>
+            <div class="project-meta">
+                <span>{{ project.tasks|length }} tasks</span>
+                <span>{{ project.progress_percent() }}% done</span>
+            </div>
+            {% if current_user.is_admin() %}
+            <form method="POST" action="{{ url_for('projects.archive_project', project_id=project.id) }}" style="margin-top: 0.75rem;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary btn-small">Restore</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
 </div>
 {% endif %}
 {% endblock %}

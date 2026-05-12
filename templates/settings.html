@@ -3,16 +3,17 @@
 
 {% block content %}
 <div class="settings-page">
-    <h1>⚙️ Settings</h1>
+    <h1>Settings</h1>
     <p class="welcome-text">Manage your account and preferences</p>
 
     <div class="settings-grid">
         <!-- Profile Section -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <h2>👤 Profile</h2>
+                <h2>Profile</h2>
             </div>
             <form method="POST" action="{{ url_for('settings.update_profile') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label for="username">Username</label>
                     <input type="text" id="username" name="username" value="{{ current_user.username }}" required>
@@ -36,9 +37,10 @@
         <!-- Security Section -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <h2>🔐 Security</h2>
+                <h2>Security</h2>
             </div>
             <form method="POST" action="{{ url_for('settings.change_password') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label for="old_password">Current Password</label>
                     <input type="password" id="old_password" name="old_password" required placeholder="Enter current password">
@@ -58,9 +60,10 @@
         <!-- Notifications Section -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <h2>🔔 Notifications</h2>
+                <h2>Notifications</h2>
             </div>
             <form method="POST" action="{{ url_for('settings.update_notifications') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="toggle-group">
                     <label class="toggle-label">
                         <span class="toggle-text">

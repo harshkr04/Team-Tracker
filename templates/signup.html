@@ -8,6 +8,7 @@
         <p class="auth-subtitle">Create your Team Tracker account</p>
         
         <form method="POST" action="{{ url_for('auth.signup') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required placeholder="Pick a username">

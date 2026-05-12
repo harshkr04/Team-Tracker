@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
-from models import User
+from models import User, ActivityLog
 from extensions import db
 
 team_bp = Blueprint('team', __name__, url_prefix='/team')
@@ -43,6 +43,7 @@ def add_member():
             role='member'
         )
         db.session.add(new_user)
+        ActivityLog.log(current_user.id, 'added', 'member', username, f'Email: {email}')
         db.session.commit()
         flash(f'Member "{username}" added!', 'success')
     except Exception as e:
@@ -70,14 +71,16 @@ def remove_member(user_id):
         return redirect(url_for('team.team_page'))
     
     try:
+        username = user.username
         # remove from all projects first
         user.projects.clear()
         # reassign tasks
         for task in user.assigned_tasks:
             task.assigned_to = None
         db.session.delete(user)
+        ActivityLog.log(current_user.id, 'removed', 'member', username)
         db.session.commit()
-        flash(f'Member "{user.username}" removed', 'success')
+        flash(f'Member "{username}" removed', 'success')
     except Exception as e:
         db.session.rollback()
         flash('Error removing member', 'error')
