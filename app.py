@@ -6,10 +6,7 @@ def create_app():
     app = Flask(__name__)
     
     # config stuff
-    secret = os.environ.get('SECRET_KEY')
-    if not secret and os.environ.get('RAILWAY_ENVIRONMENT'):
-        raise RuntimeError("SECRET_KEY must be set in production")
-    app.config['SECRET_KEY'] = secret or 'dev-secret-key-local-only'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'ethara-fallback-key-change-in-prod')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///teamtracker.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
